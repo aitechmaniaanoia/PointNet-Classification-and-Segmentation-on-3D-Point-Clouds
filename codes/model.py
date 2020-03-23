@@ -21,8 +21,38 @@ class TNet(nn.Module):
         # fc 256 k*k (no batchnorm, no relu)
         # add bias
         # reshape
+        self.conv_seq = nn.Sequential(nn.Conv2d(3, 64, 1),
+                                      nn.BatchNorm1d(64), nn.ReLU(),
+                                      
+                                      nn.Conv2d(64, 128, 1),
+                                      nn.BatchNorm1d(128), nn.ReLU(),
+                                      
+                                      nn.Conv2d(128, 1024, 1),
+                                      nn.BatchNorm1d(1024), nn.ReLU()
+            )
+        
+        #self.maxpool = nn.MaxPool1d(2)
+        
+        self.fc_seq = nn.Sequential(nn.Linear(1024, 512),
+                                    nn.BatchNorm1d(512), nn.ReLU(),
+                                    
+                                    nn.Linear(512, 256),
+                                    nn.BatchNorm1d(256), nn.ReLU(),
+                                    
+                                    nn.Linear(256, k*k)
+                                    )
     
     def forward(self, x):
+        x = self.conv_seq(x)
+        # maxpool
+        x = torch.max(x, 2 keepdim = True)[0]
+        x = x.view(-1, 1024)
+        
+        x = fc_seq(x)
+        
+        # add bias 
+        # reshape
+        
         return x
 
 
