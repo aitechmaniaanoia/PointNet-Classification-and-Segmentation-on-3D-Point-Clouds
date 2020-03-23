@@ -43,14 +43,19 @@ class TNet(nn.Module):
                                     )
     
     def forward(self, x):
+        batch_size = x.size()[0]
         x = self.conv_seq(x)
         # maxpool
-        x = torch.max(x, 2 keepdim = True)[0]
+        x = torch.max(x, 2, keepdim = True)[0]
         x = x.view(-1, 1024)
         
-        x = fc_seq(x)
+        x = self.fc_seq(x)
         
         # add bias 
+        b = Variable(torch.from_numpy(np.array([1,0,0,0,1,0,0,0,1]).astype(np.float32))).view(1,9).repeat(batch_size,1)
+        if x.is_cuda:
+            b = b.cuda()
+        x = x + b
         # reshape
         
         return x
@@ -66,19 +71,58 @@ class PointNetfeat(nn.Module):
         # conv 64 128
         # conv 128 1024 (no relu)
         # max pool
+        self.tnet1 = TNet()
 
+        self.conv1_seq = nn.Sequential(nn.Conv1d(3, 64, 1),
+                                       nn.BatchNorm1d(64), nn.ReLU())
+        
+        if self.feature_transform:
+            self.tnet2 = TNet()
+
+        self.conv2_seq = nn.Sequential(nn.Conv1d(64, 128, 1),
+                                       nn.BatchNorm1d(128), nn.ReLU())
+        
+        self.conv3_seq = nn.Sequential(nn.Conv1d(128, 1024, 1),
+                                       nn.BatchNorm1d(1024))
+        
     def forward(self, x):
         n_pts = x.size()[2]
 
         # You will need these extra outputs:
         # trans = output of applying TNet function to input
         # trans_feat = output of applying TNet function to features (if feature_transform is true)
-
+        
+        ###################################### need to change ######################################
+        trans = self.tnet1(x)
+        
+        x = x.transpose(2, 1)
+        x = torch.bmm(x, trans)
+        
+        x = x.transpose(2, 1)
+        x = self.conv1_seq(x)
+        
+        if self.feature_transform:
+            trans_feat = self.tnet2(x)
+            x = x.transpose(2, 1)
+            x = torch.bmm(x, trans_feat)
+            x = x.transpose(2, 1)
+        else:
+            trans_feat = None
+        
+        pointfeat = x
+        
+        x = self.conv2_seq(x)
+        x = self.conv3_seq(x)
+        
+        x = torch.max(x, 2, keepdim = True)[0]
+        x = x.view(-1, 1024)
+        
         if self.global_feat: # This shows if we're doing classification or segmentation
             return x, trans, trans_feat
         else:
             x = x.view(-1, 1024, 1).repeat(1, 1, n_pts)
             return torch.cat([x, pointfeat], 1), trans, trans_feat
+
 
 class PointNetCls(nn.Module):
     def __init__(self, k = 2, feature_transform=False):
@@ -109,17 +153,52 @@ class PointNetDenseCls(nn.Module):
         # conv 512 256
         # conv 256 128
         # conv 128 k
-        # softmax 
+        # softmax
+        self.global_feat = PointNetfeat(global_feat = False, feature_transform = feature_transform)
+        
+        self.conv1_seq = nn.Sequential(nn.Conv1d(1088, 512, 1),
+                                       nn.BatchNorm1d(512), nn.ReLU(),
+                                       
+                                       nn.Conv1d(512, 256, 1),
+                                       nn.BatchNorm1d(256), nn.ReLU(),
+                                       
+                                       nn.Conv1d(256, 128, 1),
+                                       nn.BatchNorm1d(128), nn.ReLU()
+                                       )
+        self.conv2 = nn.Conv1d(128, k, 1)
+        
     
     def forward(self, x):
         # You will need these extra outputs: 
         # trans = output of applying TNet function to input
         # trans_feat = output of applying TNet function to features (if feature_transform is true)
         # (you can directly get them from PointNetfeat)
+        batch_size = x.size()[0]
+        n_pts = x.size()[2]
+        x, trans, trans_feat = self.global_feat(x)
+        x = self.conv1_seq(x)
+        x = self.conv2(x)
+        
+        x = x.transpose(2, 1).contiguous()
+        
+        # softmax
+        #x = F.log_softmax(x.view(-1, self.k), dim = -1)
+        x = F.softmax(x.view(-1, self.k), dim = -1)
+        
+        x = x.view(batch_size, n_pts, self.k)
+        
         return x, trans, trans_feat
 
 def feature_transform_regularizer(trans):
     # compute |((trans * trans.transpose) - I)|^2
+    ################################ need to be fixed#####################################
+    #batch_size = trans.size()[0]
+    d = trans.size()[1]
+    
+    I = torch.eye(d)[None, :, :]
+    if trans.is_cuda:
+        I = I.cuda()
+    loss = torch.mean(torch.norm(torch.bmm(trans, trans.transpose(2,1)) - I, dim = (1,2)))
     
     return loss
 
