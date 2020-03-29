@@ -76,7 +76,7 @@ class PointNetfeat(nn.Module):
         self.conv1_seq = nn.Sequential(nn.Conv1d(3, 64, 1),
                                        nn.BatchNorm1d(64), nn.ReLU())
         
-        if self.feature_transform:
+        if feature_transform:
             self.tnet2 = TNet()
 
         self.conv2_seq = nn.Sequential(nn.Conv1d(64, 128, 1),
@@ -191,7 +191,7 @@ class PointNetDenseCls(nn.Module):
 
 def feature_transform_regularizer(trans):
     # compute |((trans * trans.transpose) - I)|^2
-    ################################ need to be fixed#####################################
+    ################################ need to be fixed #####################################
     #batch_size = trans.size()[0]
     d = trans.size()[1]
     

@@ -54,7 +54,7 @@ class ShapeNetDataset(data.Dataset):
         self.npoints = npoints
         self.root = root
         self.catfile = os.path.join(self.root, 'synsetoffset2category.txt')       
-	self.cat = {}
+        self.cat = {}        
         self.data_augmentation = data_augmentation
         self.classification = classification
         self.seg_classes = {}
