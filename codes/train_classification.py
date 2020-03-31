@@ -20,7 +20,7 @@ parser.add_argument('--batchSize', type=int, default=32, help='input batch size'
 parser.add_argument('--num_points', type=int, default=2500, help='input batch size')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
 parser.add_argument('--model', type=str, default='', help='model path')
-parser.add_argument('--nepoch', type=int, default=250, help='number of epochs to train for')
+parser.add_argument('--nepoch', type=int, default=5, help='number of epochs to train for')
 parser.add_argument('--outf', type=str, default='cls', help='output folder')
 #parser.add_argument('--dataset', type=str, required=True, help="dataset path")
 parser.add_argument('--dataset', type=str, default=DATA_PATH, required=False, help="dataset path")
@@ -61,7 +61,7 @@ test_dataset = ShapeNetDataset(root='shapenetcore_partanno_segmentation_benchmar
                                npoints=opt.num_points, data_augmentation=False)
 
 testdataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batchSize,
-                                             shuffle=True, num_workers=int(opt.workers))
+                                             shuffle=True)#, num_workers=int(opt.workers))
 
 
 print(len(dataset))
@@ -83,6 +83,10 @@ num_batch = len(dataset) / opt.batchSize
 
 for epoch in range(opt.nepoch):
     scheduler.step()
+    
+    train_correct = 0
+    total_trainset = 0
+    
     for i, data in enumerate(dataloader, 0):
         points, target = data
         target = target[:, 0]
@@ -100,7 +104,12 @@ for epoch in range(opt.nepoch):
         
         pred_choice = pred.data.max(1)[1]
         correct = pred_choice.eq(target.data).cpu().sum()
-        print('[%d: %d/%d] train loss: %f accuracy: %f' % (epoch, i, num_batch, loss.item(), correct.item() / float(opt.batchSize)))
+        train_correct += correct.item()
+        total_trainset += points.size()[0]
+        
+        #print('[%d: %d/%d] train loss: %f accuracy: %f' % (epoch, i, num_batch, loss.item(), correct.item() / float(opt.batchSize)))
+    
+    print("train accuracy {}".format(train_correct / float(total_trainset)))
 
        # if i % 10 == 0:
             # j, data = next(enumerate(testdataloader, 0))
@@ -118,7 +127,9 @@ for epoch in range(opt.nepoch):
     # test 
     total_correct = 0
     total_testset = 0
-    for i,data in tqdm(enumerate(testdataloader, 0)):
+    
+    #for i,data in tqdm(enumerate(testdataloader, 0)):
+    for j, data in enumerate(testdataloader, 0):
         points, target = data
         target = target[:, 0]
         points = points.transpose(2, 1)
