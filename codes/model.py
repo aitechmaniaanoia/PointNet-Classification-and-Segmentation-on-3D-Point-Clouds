@@ -1,4 +1,5 @@
 from __future__ import print_function
+import sys
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -21,13 +22,13 @@ class TNet(nn.Module):
         # fc 256 k*k (no batchnorm, no relu)
         # add bias
         # reshape
-        self.conv_seq = nn.Sequential(nn.Conv2d(3, 64, 1),
+        self.conv_seq = nn.Sequential(nn.Conv1d(3, 64, 1),
                                       nn.BatchNorm1d(64), nn.ReLU(),
                                       
-                                      nn.Conv2d(64, 128, 1),
+                                      nn.Conv1d(64, 128, 1),
                                       nn.BatchNorm1d(128), nn.ReLU(),
                                       
-                                      nn.Conv2d(128, 1024, 1),
+                                      nn.Conv1d(128, 1024, 1),
                                       nn.BatchNorm1d(1024), nn.ReLU()
             )
         
@@ -51,12 +52,19 @@ class TNet(nn.Module):
         
         x = self.fc_seq(x)
         
+        k = np.sqrt(x.shape[1]).astype(np.int64)
         # add bias 
-        b = Variable(torch.from_numpy(np.array([1,0,0,0,1,0,0,0,1]).astype(np.float32))).view(1,9).repeat(batch_size,1)
+        bias = torch.from_numpy(np.eye(k).flatten().astype(np.float32))
+        bias = Variable(bias)
+        bias = bias.view(1,x.shape[1])
+        bias = bias.repeat(batch_size,1)
+        
         if x.is_cuda:
-            b = b.cuda()
-        x = x + b
+            bias = bias.cuda()
+            
+        x = x + bias
         # reshape
+        x = x.view(-1, k, k)
         
         return x
 
@@ -71,13 +79,16 @@ class PointNetfeat(nn.Module):
         # conv 64 128
         # conv 128 1024 (no relu)
         # max pool
-        self.tnet1 = TNet()
+        self.tnet3 = TNet(k=3)
 
         self.conv1_seq = nn.Sequential(nn.Conv1d(3, 64, 1),
                                        nn.BatchNorm1d(64), nn.ReLU())
         
         if feature_transform:
-            self.tnet2 = TNet()
+            self.tnet64 = TNet(k=64)
+            
+        self.feature_transform = feature_transform
+        self.global_feat = global_feat
 
         self.conv2_seq = nn.Sequential(nn.Conv1d(64, 128, 1),
                                        nn.BatchNorm1d(128), nn.ReLU())
@@ -91,9 +102,8 @@ class PointNetfeat(nn.Module):
         # You will need these extra outputs:
         # trans = output of applying TNet function to input
         # trans_feat = output of applying TNet function to features (if feature_transform is true)
-        
-        ###################################### need to change ######################################
-        trans = self.tnet1(x)
+
+        trans = self.tnet3(x)
         
         x = x.transpose(2, 1)
         x = torch.bmm(x, trans)
@@ -102,7 +112,7 @@ class PointNetfeat(nn.Module):
         x = self.conv1_seq(x)
         
         if self.feature_transform:
-            trans_feat = self.tnet2(x)
+            trans_feat = self.tnet64(x)
             x = x.transpose(2, 1)
             x = torch.bmm(x, trans_feat)
             x = x.transpose(2, 1)
@@ -117,7 +127,7 @@ class PointNetfeat(nn.Module):
         x = torch.max(x, 2, keepdim = True)[0]
         x = x.view(-1, 1024)
         
-        if self.global_feat: # This shows if we're doing classification or segmentation
+        if self.global_feat:
             return x, trans, trans_feat
         else:
             x = x.view(-1, 1024, 1).repeat(1, 1, n_pts)
