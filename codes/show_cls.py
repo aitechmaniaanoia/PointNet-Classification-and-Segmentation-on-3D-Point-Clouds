@@ -10,10 +10,10 @@ import torch.nn.functional as F
 
 parser = argparse.ArgumentParser()
 # without feature transformation
-parser.add_argument('--model', type=str, default = 'C:/Users/Zoe/Desktop/CMPT743A3/codes/cls_no_ft/cls_model_3.pth',  help='model path')
+parser.add_argument('--model', type=str, default = 'C:/Users/Zoe/Desktop/CMPT743A3/codes/cls/cls_best_model_no_ft.pth',  help='model path')
 
 # with feature transformation
-parser.add_argument('--model', type=str, default = 'C:/Users/Zoe/Desktop/CMPT743A3/codes/cls/cls_model_3.pth',  help='model path')
+parser.add_argument('--model', type=str, default = 'C:/Users/Zoe/Desktop/CMPT743A3/codes/cls/cls_best_model_ft.pth',  help='model path')
 
 parser.add_argument('--num_points', type=int, default=2500, help='input batch size')
 

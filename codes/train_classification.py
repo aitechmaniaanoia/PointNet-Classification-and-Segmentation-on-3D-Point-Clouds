@@ -25,7 +25,7 @@ parser.add_argument('--nepoch', type=int, default=5, help='number of epochs to t
 parser.add_argument('--outf', type=str, default='cls', help='output folder')
 #parser.add_argument('--dataset', type=str, required=True, help="dataset path")
 parser.add_argument('--dataset', type=str, default=DATA_PATH, required=False, help="dataset path")
-parser.add_argument('--feature_transform', default = False, action='store_true', help="use feature transform")
+parser.add_argument('--feature_transform', default = True, action='store_true', help="use feature transform")
 
 opt = parser.parse_args()
 print(opt)
@@ -112,8 +112,9 @@ for epoch in range(opt.nepoch):
         
         #print('[%d: %d/%d] train loss: %f accuracy: %f' % (epoch, i, num_batch, loss.item(), correct.item() / float(opt.batchSize)))
     
-    print("train accuracy {}".format(train_correct / float(total_trainset)))
     print('[%d] time: %f' % (epoch, time.time()-start_time))
+    print("train accuracy {}".format(train_correct / float(total_trainset)))
+    
 
        # if i % 10 == 0:
             # j, data = next(enumerate(testdataloader, 0))
@@ -154,7 +155,7 @@ for epoch in range(opt.nepoch):
     if val_acc > best_val:
         best_val = val_acc
         
-        torch.save(classifier.state_dict(), '%s/cls_best_model_%d.pth' % (opt.outf, epoch))
+        torch.save(classifier.state_dict(), '%s/cls_best_model_ft.pth' %opt.outf)
         
                                     
 

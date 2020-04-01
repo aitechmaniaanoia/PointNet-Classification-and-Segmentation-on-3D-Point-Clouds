@@ -22,7 +22,7 @@ class TNet(nn.Module):
         # fc 256 k*k (no batchnorm, no relu)
         # add bias
         # reshape
-        self.conv_seq = nn.Sequential(nn.Conv1d(3, 64, 1),
+        self.conv_seq = nn.Sequential(nn.Conv1d(k, 64, 1),
                                       nn.BatchNorm1d(64), nn.ReLU(),
                                       
                                       nn.Conv1d(64, 128, 1),
@@ -207,9 +207,16 @@ def feature_transform_regularizer(trans):
     d = trans.size()[1]
     
     I = torch.eye(d)[None, :, :]
+    I = Variable(I)
+    
     if trans.is_cuda:
-        I = I.cuda()
-    loss = torch.mean(torch.norm(torch.bmm(trans, trans.transpose(2,1)) - I, dim = (1,2)))
+        trans = trans.cpu()
+        loss = torch.mean(torch.norm(torch.bmm(trans, trans.transpose(2,1)) - I, dim = (1,2)))
+    
+        loss = loss.cuda()
+    
+    else:
+        loss = torch.mean(torch.norm(torch.bmm(trans, trans.transpose(2,1)) - I, dim = (1,2)))
     
     return loss
 
