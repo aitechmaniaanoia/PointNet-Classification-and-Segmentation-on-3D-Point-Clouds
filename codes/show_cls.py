@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 parser = argparse.ArgumentParser()
 # without feature transformation
-parser.add_argument('--model', type=str, default = 'C:/Users/Zoe/Desktop/CMPT743A3/codes/cls/cls_best_model_no_ft.pth',  help='model path')
+#parser.add_argument('--model', type=str, default = 'C:/Users/Zoe/Desktop/CMPT743A3/codes/cls/cls_best_model_no_ft.pth',  help='model path')
 
 # with feature transformation
 parser.add_argument('--model', type=str, default = 'C:/Users/Zoe/Desktop/CMPT743A3/codes/cls/cls_best_model_ft.pth',  help='model path')
@@ -51,7 +51,7 @@ for i, data in enumerate(train_dataloader, 0):
     pred, _, _ = classifier(points)
     pred_choice = pred.data.max(1)[1]
     correct = pred_choice.eq(target.data).cpu().sum()
-    print('i:%d train accuracy: %f' % (i, correct.item() / 32))
+    #print('i:%d train accuracy: %f' % (i, correct.item() / 32))
     
     train_correct += correct.item()
     total_trainset += points.size()[0]
@@ -73,7 +73,7 @@ for i, data in enumerate(test_dataloader, 0):
     pred, _, _ = classifier(points)
     pred_choice = pred.data.max(1)[1]
     correct = pred_choice.eq(target.data).cpu().sum()
-    print('i:%d test accuracy: %f' % (i, correct.item() /32))
+    #print('i:%d test accuracy: %f' % (i, correct.item() /32))
     
     total_correct += correct.item()
     total_testset += points.size()[0]

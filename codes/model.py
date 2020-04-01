@@ -53,6 +53,7 @@ class TNet(nn.Module):
         x = self.fc_seq(x)
         
         k = np.sqrt(x.shape[1]).astype(np.int64)
+        
         # add bias 
         bias = torch.from_numpy(np.eye(k).flatten().astype(np.float32))
         bias = Variable(bias)
@@ -63,6 +64,7 @@ class TNet(nn.Module):
             bias = bias.cuda()
             
         x = x + bias
+        
         # reshape
         x = x.view(-1, k, k)
         
@@ -86,15 +88,15 @@ class PointNetfeat(nn.Module):
         
         if feature_transform:
             self.tnet64 = TNet(k=64)
-            
-        self.feature_transform = feature_transform
-        self.global_feat = global_feat
 
         self.conv2_seq = nn.Sequential(nn.Conv1d(64, 128, 1),
                                        nn.BatchNorm1d(128), nn.ReLU())
         
         self.conv3_seq = nn.Sequential(nn.Conv1d(128, 1024, 1),
                                        nn.BatchNorm1d(1024))
+        
+        self.feature_transform = feature_transform
+        self.global_feat = global_feat
         
     def forward(self, x):
         n_pts = x.size()[2]
@@ -120,8 +122,6 @@ class PointNetfeat(nn.Module):
         else:
             trans_feat = None
         
-        pointfeat = x
-        
         x = self.conv2_seq(x)
         x = self.conv3_seq(x)
         
@@ -129,9 +129,12 @@ class PointNetfeat(nn.Module):
         x = x.view(-1, 1024)
         
         if self.global_feat:
+            
             return x, trans, trans_feat
         else:
+            pointfeat = x            
             x = x.view(-1, 1024, 1).repeat(1, 1, n_pts)
+            
             return torch.cat([x, pointfeat], 1), trans, trans_feat
 
 
@@ -202,8 +205,6 @@ class PointNetDenseCls(nn.Module):
 
 def feature_transform_regularizer(trans):
     # compute |((trans * trans.transpose) - I)|^2
-    ################################ need to be fixed #####################################
-    #batch_size = trans.size()[0]
     d = trans.size()[1]
     
     I = torch.eye(d)[None, :, :]

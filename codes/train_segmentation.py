@@ -6,11 +6,15 @@ import torch
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
-from pointnet.dataset import ShapeNetDataset
-from pointnet.model import PointNetDenseCls, feature_transform_regularizer
+from dataset import ShapeNetDataset
+from model import PointNetDenseCls, feature_transform_regularizer
 import torch.nn.functional as F
 from tqdm import tqdm
 import numpy as np
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = BASE_DIR
+DATA_PATH = os.path.join(ROOT_DIR, 'shapenetcore_partanno_segmentation_benchmark_v0')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batchSize', type=int, default=4, help='input batch size')
@@ -18,9 +22,10 @@ parser.add_argument('--workers', type=int, help='number of data loading workers'
 parser.add_argument('--nepoch', type=int, default=25, help='number of epochs to train for')
 parser.add_argument('--model', type=str, default='', help='model path')
 parser.add_argument('--outf', type=str, default='seg', help='output folder')
-parser.add_argument('--dataset', type=str, required=True, help="dataset path")
+#parser.add_argument('--dataset', type=str, required=True, help="dataset path")
+parser.add_argument('--dataset', type=str, default=DATA_PATH, required=False, help="dataset path")
 parser.add_argument('--class_choice', type=str, default='Chair', help="class_choice")
-parser.add_argument('--feature_transform', action='store_true', help="use feature transform")
+parser.add_argument('--feature_transform', default = False, action='store_true', help="use feature transform")
 
 opt = parser.parse_args()
 print(opt)
@@ -34,11 +39,12 @@ dataset = ShapeNetDataset(
     root=opt.dataset,
     classification=False,
     class_choice=[opt.class_choice])
+
 dataloader = torch.utils.data.DataLoader(
     dataset,
     batch_size=opt.batchSize,
-    shuffle=True,
-    num_workers=int(opt.workers))
+    shuffle=True #, num_workers=int(opt.workers)
+    )
 
 test_dataset = ShapeNetDataset(
     root=opt.dataset,
@@ -46,11 +52,12 @@ test_dataset = ShapeNetDataset(
     class_choice=[opt.class_choice],
     split='test',
     data_augmentation=False)
+
 testdataloader = torch.utils.data.DataLoader(
     test_dataset,
     batch_size=opt.batchSize,
-    shuffle=True,
-    num_workers=int(opt.workers))
+    shuffle=True #, num_workers=int(opt.workers)
+    )
 
 print(len(dataset), len(test_dataset))
 num_classes = dataset.num_seg_classes
