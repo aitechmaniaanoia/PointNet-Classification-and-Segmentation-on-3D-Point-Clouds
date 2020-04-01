@@ -1,6 +1,7 @@
 from __future__ import print_function
 import argparse
 import os
+import time
 import random
 import torch
 import torch.nn.parallel
@@ -19,7 +20,7 @@ DATA_PATH = os.path.join(ROOT_DIR, 'shapenetcore_partanno_segmentation_benchmark
 parser = argparse.ArgumentParser()
 parser.add_argument('--batchSize', type=int, default=4, help='input batch size')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
-parser.add_argument('--nepoch', type=int, default=25, help='number of epochs to train for')
+parser.add_argument('--nepoch', type=int, default=10, help='number of epochs to train for')
 parser.add_argument('--model', type=str, default='', help='model path')
 parser.add_argument('--outf', type=str, default='seg', help='output folder')
 #parser.add_argument('--dataset', type=str, required=True, help="dataset path")
@@ -78,8 +79,14 @@ classifier.cuda()
 
 num_batch = len(dataset) / opt.batchSize
 
+start_time = time.time()
+
 for epoch in range(opt.nepoch):
     scheduler.step()
+    
+    train_correct = 0
+    total_trainset = 0
+    
     for i, data in enumerate(dataloader, 0):
         points, target = data
         points = points.transpose(2, 1)
@@ -98,48 +105,82 @@ for epoch in range(opt.nepoch):
         optimizer.step()
         pred_choice = pred.data.max(1)[1]
         correct = pred_choice.eq(target.data).cpu().sum()
-        print('[%d: %d/%d] train loss: %f accuracy: %f' % (epoch, i, num_batch, loss.item(), correct.item()/float(opt.batchSize * 2500)))
+        
+        train_correct += correct.item()
+        total_trainset += 1
+        
+        #print('[%d: %d/%d] train loss: %f accuracy: %f' % (epoch, i, num_batch, loss.item(), correct.item()/float(opt.batchSize * 2500)))
 
-        if i % 10 == 0:
-            j, data = next(enumerate(testdataloader, 0))
-            points, target = data
-            points = points.transpose(2, 1)
-            points, target = points.cuda(), target.cuda()
-            classifier = classifier.eval()
-            pred, _, _ = classifier(points)
-            pred = pred.view(-1, num_classes)
-            target = target.view(-1, 1)[:, 0] - 1
-            loss = F.nll_loss(pred, target)
-            pred_choice = pred.data.max(1)[1]
-            correct = pred_choice.eq(target.data).cpu().sum()
-            print('[%d: %d/%d] %s loss: %f accuracy: %f' % (epoch, i, num_batch, blue('test'), loss.item(), correct.item()/float(opt.batchSize * 2500)))
+        # if i % 100 == 0:
+        #     j, data = next(enumerate(testdataloader, 0))
+        #     points, target = data
+        #     points = points.transpose(2, 1)
+        #     points, target = points.cuda(), target.cuda()
+        #     classifier = classifier.eval()
+        #     pred, _, _ = classifier(points)
+        #     pred = pred.view(-1, num_classes)
+        #     target = target.view(-1, 1)[:, 0] - 1
+        #     loss = F.nll_loss(pred, target)
+        #     pred_choice = pred.data.max(1)[1]
+        #     correct = pred_choice.eq(target.data).cpu().sum()
+        #     print('[%d: %d/%d] %s loss: %f accuracy: %f' % (epoch, i, num_batch, blue('test'), loss.item(), correct.item()/float(opt.batchSize * 2500)))
+            
+            # line = ['[%d: %d/%d] %s loss: %f accuracy: %f' % (epoch, i, num_batch, blue('test'), loss.item(), correct.item()/float(opt.batchSize * 2500))]
+            
+            # path = 'seg_test_accuracy'
+            
+            # with open(path + "%d.txt" %epoch, "w") as text_file:
+            #     text_file.writelines(line)
+            #     text_file.write('\n')
 
+    print('[%d] time: %f' % (epoch, time.time()-start_time))
+    print("train accuracy {}".format(train_correct / (float(opt.batchSize * 2500)*float(total_trainset))))
     torch.save(classifier.state_dict(), '%s/seg_model_%s_%d.pth' % (opt.outf, opt.class_choice, epoch))
+    
+    # total_correct = 0
+    # total_testset = 0
+    
+    # #for i,data in tqdm(enumerate(testdataloader, 0)):
+    # for j, data in enumerate(testdataloader, 0):
+    #     points, target = data
+    #     target = target[:, 0]
+    #     points = points.transpose(2, 1)
+    #     points, target = points.cuda(), target.cuda()
+    #     classifier = classifier.eval()
+    #     pred, _, _ = classifier(points)
+    #     pred_choice = pred.data.max(1)[1]
+    #     correct = pred_choice.eq(target.data).cpu().sum()
+        
+    #     total_correct += correct.item()
+    #     total_testset += 1
+    
+    # print("test accuracy {}".format(total_correct / float(total_trainset)))
+
 
 ## benchmark mIOU
-shape_ious = []
-for i,data in tqdm(enumerate(testdataloader, 0)):
-    points, target = data
-    points = points.transpose(2, 1)
-    points, target = points.cuda(), target.cuda()
-    classifier = classifier.eval()
-    pred, _, _ = classifier(points)
-    pred_choice = pred.data.max(2)[1]
-
-    pred_np = pred_choice.cpu().data.numpy()
-    target_np = target.cpu().data.numpy() - 1
-
-    for shape_idx in range(target_np.shape[0]):
-        parts = range(num_classes)#np.unique(target_np[shape_idx])
-        part_ious = []
-        for part in parts:
-            I = np.sum(np.logical_and(pred_np[shape_idx] == part, target_np[shape_idx] == part))
-            U = np.sum(np.logical_or(pred_np[shape_idx] == part, target_np[shape_idx] == part))
-            if U == 0:
-                iou = 1 #If the union of groundtruth and prediction points is empty, then count part IoU as 1
-            else:
-                iou = I / float(U)
-            part_ious.append(iou)
-        shape_ious.append(np.mean(part_ious))
-
-print("mIOU for class {}: {}".format(opt.class_choice, np.mean(shape_ious)))
+    shape_ious = []
+    for i,data in tqdm(enumerate(testdataloader, 0)):
+        points, target = data
+        points = points.transpose(2, 1)
+        points, target = points.cuda(), target.cuda()
+        classifier = classifier.eval()
+        pred, _, _ = classifier(points)
+        pred_choice = pred.data.max(2)[1]
+    
+        pred_np = pred_choice.cpu().data.numpy()
+        target_np = target.cpu().data.numpy() - 1
+    
+        for shape_idx in range(target_np.shape[0]):
+            parts = range(num_classes)#np.unique(target_np[shape_idx])
+            part_ious = []
+            for part in parts:
+                I = np.sum(np.logical_and(pred_np[shape_idx] == part, target_np[shape_idx] == part))
+                U = np.sum(np.logical_or(pred_np[shape_idx] == part, target_np[shape_idx] == part))
+                if U == 0:
+                    iou = 1 #If the union of groundtruth and prediction points is empty, then count part IoU as 1
+                else:
+                    iou = I / float(U)
+                part_ious.append(iou)
+            shape_ious.append(np.mean(part_ious))
+    
+    print("mIOU for class {}: {}".format(opt.class_choice, np.mean(shape_ious)))

@@ -122,6 +122,8 @@ class PointNetfeat(nn.Module):
         else:
             trans_feat = None
         
+        pointfeat = x 
+        
         x = self.conv2_seq(x)
         x = self.conv3_seq(x)
         
@@ -132,7 +134,7 @@ class PointNetfeat(nn.Module):
             
             return x, trans, trans_feat
         else:
-            pointfeat = x            
+            #pointfeat = x            
             x = x.view(-1, 1024, 1).repeat(1, 1, n_pts)
             
             return torch.cat([x, pointfeat], 1), trans, trans_feat
@@ -168,6 +170,7 @@ class PointNetDenseCls(nn.Module):
         # conv 256 128
         # conv 128 k
         # softmax
+        self.k = k
         self.global_feat = PointNetfeat(global_feat = False, feature_transform = feature_transform)
         
         self.conv1_seq = nn.Sequential(nn.Conv1d(1088, 512, 1),
