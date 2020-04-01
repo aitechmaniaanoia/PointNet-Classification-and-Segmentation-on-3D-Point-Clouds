@@ -4,19 +4,23 @@ import torch
 import torch.nn.parallel
 import torch.utils.data
 from torch.autograd import Variable
-from pointnet.dataset import ShapeNetDataset
-from pointnet.model import PointNetCls
+from dataset import ShapeNetDataset
+from model import PointNetCls
 import torch.nn.functional as F
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', type=str, default = '',  help='model path')
+# without feature transformation
+parser.add_argument('--model', type=str, default = 'C:/Users/Zoe/Desktop/CMPT743A3/codes/cls_no_ft/cls_model_3.pth',  help='model path')
+
+# with feature transformation
+parser.add_argument('--model', type=str, default = 'C:/Users/Zoe/Desktop/CMPT743A3/codes/cls/cls_model_3.pth',  help='model path')
+
 parser.add_argument('--num_points', type=int, default=2500, help='input batch size')
 
 opt = parser.parse_args()
 print(opt)
 
 
-#################################### need to be fixed ######################################
 ## load dataset
 test_dataset = ShapeNetDataset(root='shapenetcore_partanno_segmentation_benchmark_v0',
                                split='test', classification=True, npoints=opt.num_points, data_augmentation=False)
@@ -32,46 +36,49 @@ classifier.load_state_dict(torch.load(opt.model))
 classifier.eval()
 
 
+train_correct = 0
+total_trainset = 0
+
+# train data
+    
 for i, data in enumerate(train_dataloader, 0):
-    X_points, Y_label = data
     
-    X_points = Variable(X_points)
-    Y_label = Variable(Y_label)
+    points, target = data
+    target = target[:, 0]
+    points = points.transpose(2, 1)
+    points, target = points.cuda(), target.cuda()
+    classifier = classifier.eval()
+    pred, _, _ = classifier(points)
+    pred_choice = pred.data.max(1)[1]
+    correct = pred_choice.eq(target.data).cpu().sum()
+    print('i:%d train accuracy: %f' % (i, correct.item() / 32))
     
-    X_points = X_points.transpose(2, 1)
+    train_correct += correct.item()
+    total_trainset += points.size()[0]
     
-    X_points = X_points.cuda()
-    Y_label = Y_label.cuda()
+print("total train accuracy {}".format(train_correct / float(total_trainset)))
+
     
-    Pred_label, _, _, = classifier(X_points)
-    
-    # get loss
-    loss = F.nll_loss(Pred_label, Y_label)
-    
-    pred_max = Pred_label.data.max(1)[1]
-    acc = pred_max.eq(Y_label.data).cpu().sum()
-    print('i:%d  loss: %f accuracy: %f' % (i, loss.data.item(), acc / float(32)))
-    
+## test data
+
+total_correct = 0
+total_testset = 0
     
 for i, data in enumerate(test_dataloader, 0):
-    X_points, Y_label = data
+    points, target = data
+    target = target[:, 0]
+    points = points.transpose(2, 1)
+    points, target = points.cuda(), target.cuda()
+    classifier = classifier.eval()
+    pred, _, _ = classifier(points)
+    pred_choice = pred.data.max(1)[1]
+    correct = pred_choice.eq(target.data).cpu().sum()
+    print('i:%d test accuracy: %f' % (i, correct.item() /32))
     
-    X_points = Variable(X_points)
-    Y_label = Variable(Y_label)
-    
-    X_points = X_points.transpose(2, 1)
-    
-    X_points = X_points.cuda()
-    Y_label = Y_label.cuda()
-    
-    Pred_label, _, _, = classifier(X_points)
-    
-    # get loss
-    loss = F.nll_loss(Pred_label, Y_label)
-    
-    pred_max = Pred_label.data.max(1)[1]
-    acc = pred_max.eq(Y_label.data).cpu().sum()
-    print('i:%d  loss: %f accuracy: %f' % (i, loss.data.item(), acc / float(32)))
+    total_correct += correct.item()
+    total_testset += points.size()[0]
+
+print("test accuracy {}".format(total_correct / float(total_testset)))
     
     
     

@@ -112,6 +112,7 @@ class PointNetfeat(nn.Module):
         x = self.conv1_seq(x)
         
         if self.feature_transform:
+            #print('using feature transform!')
             trans_feat = self.tnet64(x)
             x = x.transpose(2, 1)
             x = torch.bmm(x, trans_feat)

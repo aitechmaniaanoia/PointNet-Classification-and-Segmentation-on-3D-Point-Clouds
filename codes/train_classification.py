@@ -1,6 +1,7 @@
 from __future__ import print_function
 import argparse
 import os
+import time
 import random
 import torch
 import torch.nn.parallel
@@ -24,7 +25,7 @@ parser.add_argument('--nepoch', type=int, default=5, help='number of epochs to t
 parser.add_argument('--outf', type=str, default='cls', help='output folder')
 #parser.add_argument('--dataset', type=str, required=True, help="dataset path")
 parser.add_argument('--dataset', type=str, default=DATA_PATH, required=False, help="dataset path")
-parser.add_argument('--feature_transform', action='store_true', help="use feature transform")
+parser.add_argument('--feature_transform', default = False, action='store_true', help="use feature transform")
 
 opt = parser.parse_args()
 print(opt)
@@ -60,8 +61,7 @@ test_dataset = ShapeNetDataset(root='shapenetcore_partanno_segmentation_benchmar
                                split='test', classification=True, 
                                npoints=opt.num_points, data_augmentation=False)
 
-testdataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batchSize,
-                                             shuffle=True)#, num_workers=int(opt.workers))
+testdataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batchSize, shuffle=True)#, num_workers=int(opt.workers))
 
 
 print(len(dataset))
@@ -80,6 +80,9 @@ optimizer = optim.Adam(classifier.parameters(), lr=0.001, betas=(0.9, 0.999))
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
 classifier.cuda()
 num_batch = len(dataset) / opt.batchSize
+
+best_val = 0
+start_time = time.time()
 
 for epoch in range(opt.nepoch):
     scheduler.step()
@@ -110,6 +113,7 @@ for epoch in range(opt.nepoch):
         #print('[%d: %d/%d] train loss: %f accuracy: %f' % (epoch, i, num_batch, loss.item(), correct.item() / float(opt.batchSize)))
     
     print("train accuracy {}".format(train_correct / float(total_trainset)))
+    print('[%d] time: %f' % (epoch, time.time()-start_time))
 
        # if i % 10 == 0:
             # j, data = next(enumerate(testdataloader, 0))
@@ -143,6 +147,15 @@ for epoch in range(opt.nepoch):
     
     print("test accuracy {}".format(total_correct / float(total_testset)))
             
-    torch.save(classifier.state_dict(), '%s/cls_model_%d.pth' % (opt.outf, epoch))
+    #torch.save(classifier.state_dict(), '%s/cls_model_%d.pth' % (opt.outf, epoch))
+    
+    val_acc = total_correct / float(total_testset)
+    
+    if val_acc > best_val:
+        best_val = val_acc
+        
+        torch.save(classifier.state_dict(), '%s/cls_best_model_%d.pth' % (opt.outf, epoch))
+        
+                                    
 
 

@@ -44,22 +44,6 @@ def get_segmentation_classes(root):
             f.write("{}\t{}\n".format(item, num_seg_classes))
             
 
-################################# add #######################################
-            
-def gen_modelnet_id(root):
-    classes = []
-    with open(os.path.join(root, 'train.txt'), 'r') as f:
-        for line in f:
-            classes.append(line.strip().split('/')[0])
-    classes = np.unique(classes)
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../misc/modelnet_id.txt'), 'w') as f:
-        for i in range(len(classes)):
-            f.write('{}\t{}\n'.format(classes[i], i))
-            
-##########################################################################
-            
-            
-
 class ShapeNetDataset(data.Dataset):
     def __init__(self,
                  root,
