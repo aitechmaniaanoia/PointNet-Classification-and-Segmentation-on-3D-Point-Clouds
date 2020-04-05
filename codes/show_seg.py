@@ -2,6 +2,7 @@ from __future__ import print_function
 from show3d_balls import showpoints
 import argparse
 import numpy as np
+import os
 import torch
 import torch.nn.parallel
 import torch.utils.data
@@ -10,15 +11,19 @@ from pointnet.dataset import ShapeNetDataset
 from pointnet.model import PointNetDenseCls
 import matplotlib.pyplot as plt
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = BASE_DIR
+DATA_PATH = os.path.join(ROOT_DIR, 'shapenetcore_partanno_segmentation_benchmark_v0')
 
 #showpoints(np.random.randn(2500,3), c1 = np.random.uniform(0,1,size = (2500)))
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--model', type=str, default='', help='model path')
+parser.add_argument('--model', type=str, default='C:/Users/Zoe/Desktop/CMPT743A3/codes/seg/seg_best_model_ft.pth', help='model path')
 parser.add_argument('--idx', type=int, default=0, help='model index')
-parser.add_argument('--dataset', type=str, default='', help='dataset path')
-parser.add_argument('--class_choice', type=str, default='', help='class choice')
+#parser.add_argument('--dataset', type=str, default='', help='dataset path')
+parser.add_argument('--dataset', type=str, default=DATA_PATH, required=False, help="dataset path")
+parser.add_argument('--class_choice', type=str, default='Chair', help='class choice')
 
 opt = parser.parse_args()
 print(opt)

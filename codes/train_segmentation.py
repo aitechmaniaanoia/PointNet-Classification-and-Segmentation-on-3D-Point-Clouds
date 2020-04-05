@@ -20,13 +20,13 @@ DATA_PATH = os.path.join(ROOT_DIR, 'shapenetcore_partanno_segmentation_benchmark
 parser = argparse.ArgumentParser()
 parser.add_argument('--batchSize', type=int, default=4, help='input batch size')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
-parser.add_argument('--nepoch', type=int, default=10, help='number of epochs to train for')
+parser.add_argument('--nepoch', type=int, default=20, help='number of epochs to train for')
 parser.add_argument('--model', type=str, default='', help='model path')
 parser.add_argument('--outf', type=str, default='seg', help='output folder')
 #parser.add_argument('--dataset', type=str, required=True, help="dataset path")
 parser.add_argument('--dataset', type=str, default=DATA_PATH, required=False, help="dataset path")
-parser.add_argument('--class_choice', type=str, default='Chair', help="class_choice")
-parser.add_argument('--feature_transform', default = False, action='store_true', help="use feature transform")
+parser.add_argument('--class_choice', type=str, default='Table', help="class_choice")
+parser.add_argument('--feature_transform', default = True, action='store_true', help="use feature transform")
 
 opt = parser.parse_args()
 print(opt)
@@ -183,4 +183,4 @@ for epoch in range(opt.nepoch):
                 part_ious.append(iou)
             shape_ious.append(np.mean(part_ious))
     
-    print("mIOU for class {}: {}".format(opt.class_choice, np.mean(shape_ious)))
+    print("mIOU for class {}: {}\n".format(opt.class_choice, np.mean(shape_ious)))
