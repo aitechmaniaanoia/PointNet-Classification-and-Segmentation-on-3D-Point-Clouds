@@ -25,7 +25,7 @@ parser.add_argument('--model', type=str, default='', help='model path')
 parser.add_argument('--outf', type=str, default='seg', help='output folder')
 #parser.add_argument('--dataset', type=str, required=True, help="dataset path")
 parser.add_argument('--dataset', type=str, default=DATA_PATH, required=False, help="dataset path")
-parser.add_argument('--class_choice', type=str, default='Table', help="class_choice")
+parser.add_argument('--class_choice', type=str, default='Chair', help="class_choice")
 parser.add_argument('--feature_transform', default = True, action='store_true', help="use feature transform")
 
 opt = parser.parse_args()
